@@ -21,36 +21,58 @@ Solver.prototype.randomWalker = function(runs, depth, speed){
 		speed = 10;
 	var This = this;
 
-	this.interval = window.setInterval(function(){
-		var bestMove = 0;
-		var bestHeuristic = 0;
-
-		//Update Heuristic to support other factors in future
-		var heuristic = function(score, cellsAvailable){
-			if(score == -1)
-				return 0;
-			var totalCells = This.game.size*This.game.size;
-			return score;//*(cellsAvailable/totalCells);
-		};
-
-		for(var i=0;i<runs;i++){
-			var result = This.randomWalk(This.game, depth);
-			var heuristics = heuristic(result.score, result.cellsAvailable);
-			if(heuristics > bestHeuristic){
-				bestMove = result.move;
-				bestHeuristic = heuristics;
-			}
+	if(speed == 0){
+		if(!this.game.isGameTerminated()){
+			this._randomWalker(runs, depth);
 		}
+	}
+	else{
+		this.interval = window.setInterval(function(){
+			This._randomWalker(runs, depth)
+		}, speed)
+	
+		setInterval(function(){
+			if(This.game.isGameTerminated())
+				window.clearInterval(This.interval);
+				window.clearInterval(this);
+		}, speed);	
+	}
+}
 
-		This.game.inputManager.emit("move", bestMove);
+Solver.prototype._randomWalker = function(runs, depth){
+	var bestMove = 0;
+	var bestHeuristic = -Infinity;
 
-	}, speed)
+	//Update Heuristic to support other factors in future
+	var heuristic = (Pscore, Fscore, cellsAvailable) => {
+		if(Fscore == -1 || Pscore == Fscore)
+			return -Infinity;
+		// var totalCells = this.game.size * this.game.size;
+		return Fscore*cellsAvailable;
+	};
 
-	setInterval(function(){
-		if(This.game.isGameTerminated())
-			window.clearInterval(This.interval);
-			window.clearInterval(this);
-	}, speed);
+	var move_hist = [-Infinity,-Infinity,-Infinity,-Infinity];
+
+	for(var i=0;i<runs;i++){
+		var result = this.randomWalk(this.game, depth);
+		var heuristics = heuristic(this.game.score, result.score, result.cellsAvailable);
+		
+		// if(move_hist[result.move] === -Infinity)
+		// 	move_hist[result.move] = heuristics;
+		// else move_hist[result.move] += heuristics;
+		
+		if(heuristics > bestHeuristic){
+			bestMove = result.move;
+			bestHeuristic = heuristics;
+		}
+	}
+
+	// bestMove = move_hist.indexOf(Math.max(...move_hist));
+	// if(bestMove === -Infinity){
+	// 	bestMove = 0;
+	// }
+
+	this.game.inputManager.emit("move", bestMove);
 }
 
 Solver.prototype.randomWalk = function(originalGame, depth){
